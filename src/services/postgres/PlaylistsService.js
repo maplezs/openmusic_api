@@ -9,61 +9,51 @@ class SongsService {
     this._pool = new Pool()
   }
 
-  async addSong ({
-    title, year, genre, performer, duration, albumId
-  }) {
-    const id = `song-${nanoid(16)}`
-    const createdAt = new Date().toISOString()
+  async addPlaylist ({name, owner}) {
+    const id = `playlist-${nanoid(16)}`
     const query = {
-      text: 'INSERT INTO songs VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
-      values: [id, title, year, genre, performer, duration, albumId, createdAt, createdAt]
+      text: 'INSERT INTO playlist VALUES($1, $2, $3) RETURNING id',
+      values: [id, name, owner]
     }
     const result = await this._pool.query(query)
     if (!result.rowCount) {
-      throw new InvariantError('Musik gagal ditambahkan')
+      throw new InvariantError('Playlist gagal ditambahkan')
     }
     return result.rows[0].id
   }
 
-  async getSongs ({ title, performer }) {
-    if (title && performer) {
-      const result = await this._pool.query(`SELECT id, title, performer  FROM songs WHERE title ILIKE '%${title}%' AND performer ILIKE '%${performer}%'`)
-      return result.rows
-    } if (title || performer) {
-      const result = await this._pool.query(`SELECT id, title, performer  FROM songs WHERE title ILIKE '%${title}%' OR performer ILIKE '%${performer}%'`)
-      return result.rows
+  async getPlaylists (owner) {
+    const query = {
+      text: 'SELECT * FROM playlists WHERE owner = $1',
+      values: [owner]
     }
-    const result = await this._pool.query('SELECT id, title, performer FROM songs')
+    const result = await this._pool.query(query)
     return result.rows
   }
 
-  async getSongById (id) {
+  async deletePlaylist (id) {
     const query = {
-      text: 'SELECT id, title, year, performer, genre, duration, album_id FROM songs WHERE id = $1',
+      text: 'DELETE FROM playlists WHERE id = $1 RETURNING id, owner',
       values: [id]
     }
     const result = await this._pool.query(query)
     if (!result.rows.length) {
-      throw new NotFoundError('Musik tidak ditemukan')
+      throw new NotFoundError('Playlist gagal dihapus. Id tidak ditemukan')
     }
-    return result.rows.map(mapDBToModel)[0]
   }
 
-  async editSongById (id, {
-    title, year, genre, performer, duration, albumId
-  }) {
-    const updatedAt = new Date().toISOString()
+  async addSongToPlaylist ({id, songId}) {
     const query = {
-      text: 'UPDATE songs SET title = $1, year = $2, genre = $3, performer = $4, duration = $5, album_id = $6, updated_at = $7 WHERE id = $8 RETURNING id',
-      values: [title, year, genre, performer, duration, albumId, updatedAt, id]
+      text: 'INSERT INTO songs_playlists VALUES($1, $2) RETURNING id',
+      values: [id, songId]
     }
     const result = await this._pool.query(query)
     if (!result.rows.length) {
-      throw new NotFoundError('Gagal memperbarui Musik. Id tidak ditemukan')
+      throw new NotFoundError('Gagal menambahkan lagu. Playlist atau lagu tidak ditemukan')
     }
   }
 
-  async deleteSongById (id) {
+  async getSongsInPlaylist (id) {
     const query = {
       text: 'DELETE FROM songs WHERE id = $1 RETURNING id',
       values: [id]

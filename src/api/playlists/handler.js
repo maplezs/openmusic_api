@@ -24,7 +24,7 @@ class PlaylistsHandler {
 
   async getPlaylistsHandler (request, h) {
     const { id: credentialId } = request.auth.credentials
-    const playlists = await this._service.getPlaylistsById(credentialId)
+    const playlists = await this._service.getPlaylists(credentialId)
     return {
       status: 'success',
       data: {
@@ -34,9 +34,8 @@ class PlaylistsHandler {
   }
 
   async deletePlaylistHandler (request, h) {
-    const { id: credentialId } = request.auth.credentials;
     const { id } = request.params
-    await this._service.deletePlaylistById(id, credentialId)
+    await this._service.deletePlaylist(id)
     return {
       status: 'success',
       message: 'Playlist berhasil dihapus'
@@ -45,9 +44,8 @@ class PlaylistsHandler {
 
   async postSongToPlaylistHandler (request, h) {
     this._validator.validatePostPlaylistSongPayloadSchema(request.payload)
-    const { id: credentialId } = request.auth.credentials;
     const { id } = request.params
-    await this._service.addSongToPlaylist(id, request.payload, credentialId)
+    await this._service.addSongToPlaylist({id, songId: request.payload})
     const response = h.response({
       status: 'success',
       message: 'Lagu berhasil ditambahkan ke playlist'
@@ -57,19 +55,22 @@ class PlaylistsHandler {
   }
 
   async getSongInPlaylistHandler (request, h) {
-    const { id: credentialId } = request.auth.credentials;
     const { id } = request.params
-    await this._service.deleteAlbumById(id, credentialId)
-    return {
+    await this._service.getSongsInPlaylist(id)
+    const response = h.response({
       status: 'success',
-      message: 'Album berhasil dihapus'
-    }
+      data: {
+        playlist
+      }
+    })
+    return response
   }
 
   async deleteSongInPlaylistHandler (request, h) {
     this._validator.validatePostPlaylistSongPayloadSchema(request.payload)
+    const { id: credentialId } = request.auth.credentials;
     const { id } = request.params
-    await this._service.deleteSongInPlaylist(id, request.payload)
+    await this._service.deleteSongInPlaylist(id, request.payload, credentialId)
     return {
       status: 'success',
       message: 'Lagu berhasil dihapus'
