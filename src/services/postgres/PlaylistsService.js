@@ -45,10 +45,6 @@ class PlaylistsService {
   }
 
   async addSongToPlaylist ({ playlistId, songId }) {
-    const resultSongPlaylist = await this._pool.query('SELECT * FROM songs_playlists WHERE playlist_id = $1 AND song_id = $2', [playlistId, songId])
-    if (resultSongPlaylist.rows.length) {
-      throw new InvariantError('Lagu sudah ada pada playlist')
-    }
     const id = `songs_playlists-${nanoid(16)}`
     const query = {
       text: 'INSERT INTO songs_playlists VALUES($1, $2, $3) RETURNING id',
@@ -90,18 +86,27 @@ class PlaylistsService {
       throw new NotFoundError('Lagu gagal dihapus. Playlist tidak ditemukan')
     }
   }
-  async addPlaylistActivityHandler (id) {
+
+  async addPlaylistActivity (id, userId, songId, action) {
     const query = {
-      text: 'SELECT * FROM playlists WHERE id = $1',
-      values: [id]
+      text: 'INSERT INTO playlists_activities (playlist_id, user_id, song_id, action) VALUES($1, $2, $3, $4) RETURNING id',
+      values: [id, userId, songId, action]
+    }
+    const result = await this._pool.query(query)
+    if (!result.rowCount) {
+      throw new InvariantError('Aktivitas playlist gagal ditambahkan')
     }
   }
-  async getPlaylistActivityHandler (id) {
+
+  async getPlaylistActivity (id) {
     const query = {
-      text: 'SELECT * FROM playlists WHERE id = $1',
+      text: 'SELECT users.username, songs.title, playlists_activities.action, playlists_activities.time FROM playlists_activities LEFT JOIN users ON users.id = playlists_activities.user_id LEFT JOIN songs ON songs.id = playlists_activities.song_id WHERE playlists_activities.playlist_id = $1',
       values: [id]
     }
+    const result = await this._pool.query(query)
+    return result.rows
   }
+
   async verifyPlaylistOwner (id, owner) {
     const query = {
       text: 'SELECT * FROM playlists WHERE id = $1',

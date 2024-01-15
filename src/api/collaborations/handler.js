@@ -13,7 +13,6 @@ class CollaborationsHandler {
     this._validator.validateCollaborationPayload(request.payload)
     const { id: credentialId } = request.auth.credentials
     const { playlistId, userId } = request.payload
-    console.log(playlistId)
     await this._playlistsService.verifyPlaylistOwner(playlistId, credentialId)
     await this._usersService.getUserById(userId)
     const collaborationId = await this._collaborationsService.addCollaboration(playlistId, userId)

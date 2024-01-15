@@ -50,9 +50,12 @@ class PlaylistsHandler {
     const { id } = request.params
     const { songId } = request.payload
     const { id: credentialId } = request.auth.credentials
+
     await this._playlistsService.verifyPlaylistAccess(id, credentialId)
     await this._songsService.getSongById(songId)
     await this._playlistsService.addSongToPlaylist({ playlistId: id, songId })
+    await this._playlistsService.addPlaylistActivity(id, credentialId, songId, 'add')
+
     const response = h.response({
       status: 'success',
       message: 'Lagu berhasil ditambahkan ke playlist'
@@ -82,6 +85,7 @@ class PlaylistsHandler {
     const { songId } = request.payload
     await this._playlistsService.verifyPlaylistAccess(id, credentialId)
     await this._playlistsService.deleteSongInPlaylist(id, songId)
+    await this._playlistsService.addPlaylistActivity(id, credentialId, songId, 'delete')
     return {
       status: 'success',
       message: 'Lagu berhasil dihapus'
@@ -91,16 +95,16 @@ class PlaylistsHandler {
   async getPlaylistActivityHandler (request, h) {
     const { id: credentialId } = request.auth.credentials
     const { id } = request.params
-    const { songId } = request.payload
     await this._playlistsService.verifyPlaylistAccess(id, credentialId)
-    const acitivity = await this._playlistsService.getPlaylistActivity(id)
+    const activities = await this._playlistsService.getPlaylistActivity(id)
     return {
       status: 'success',
       data: {
-        acitivity
+        playlistId: id,
+        activities
       }
     }
   }
- }
+}
 
 module.exports = PlaylistsHandler
