@@ -90,7 +90,18 @@ class PlaylistsService {
       throw new NotFoundError('Lagu gagal dihapus. Playlist tidak ditemukan')
     }
   }
-
+  async addPlaylistActivityHandler (id) {
+    const query = {
+      text: 'SELECT * FROM playlists WHERE id = $1',
+      values: [id]
+    }
+  }
+  async getPlaylistActivityHandler (id) {
+    const query = {
+      text: 'SELECT * FROM playlists WHERE id = $1',
+      values: [id]
+    }
+  }
   async verifyPlaylistOwner (id, owner) {
     const query = {
       text: 'SELECT * FROM playlists WHERE id = $1',

@@ -87,6 +87,20 @@ class PlaylistsHandler {
       message: 'Lagu berhasil dihapus'
     }
   }
-}
+
+  async getPlaylistActivityHandler (request, h) {
+    const { id: credentialId } = request.auth.credentials
+    const { id } = request.params
+    const { songId } = request.payload
+    await this._playlistsService.verifyPlaylistAccess(id, credentialId)
+    const acitivity = await this._playlistsService.getPlaylistActivity(id)
+    return {
+      status: 'success',
+      data: {
+        acitivity
+      }
+    }
+  }
+ }
 
 module.exports = PlaylistsHandler
