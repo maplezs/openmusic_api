@@ -1,54 +1,46 @@
 const autoBind = require('auto-bind')
 
-class AlbumsHandler {
-  constructor (service, validator) {
-    this._service = service
+class CollaborationsHandler {
+  constructor (collaborationsService, playlistsService, usersService, validator) {
+    this._collaborationsService = collaborationsService
+    this._playlistsService = playlistsService
+    this._usersService = usersService
     this._validator = validator
     autoBind(this)
   }
 
-  async postAlbumHandler (request, h) {
-    this._validator.validateAlbumPayload(request.payload)
-    const albumId = await this._service.addAlbum(request.payload)
+  async postCollaborationHandler (request, h) {
+    this._validator.validateCollaborationPayload(request.payload)
+    const { id: credentialId } = request.auth.credentials
+    const { playlistId, userId } = request.payload
+    console.log(playlistId)
+    await this._playlistsService.verifyPlaylistOwner(playlistId, credentialId)
+    await this._usersService.getUserById(userId)
+    const collaborationId = await this._collaborationsService.addCollaboration(playlistId, userId)
+
     const response = h.response({
       status: 'success',
       data: {
-        albumId
+        collaborationId
       }
     })
     response.code(201)
     return response
   }
 
-  async getAlbumByIdHandler (request, h) {
-    const { id } = request.params
-    const album = await this._service.getAlbumById(id)
-    return {
-      status: 'success',
-      data: {
-        album
-      }
-    }
-  }
+  async deleteCollaborationHandler (request, h) {
+    this._validator.validateCollaborationPayload(request.payload)
+    const { id: credentialId } = request.auth.credentials
+    const { playlistId, userId } = request.payload
 
-  async putAlbumByIdHandler (request, h) {
-    this._validator.validateAlbumPayload(request.payload)
-    const { id } = request.params
-    await this._service.editAlbumById(id, request.payload)
-    return {
-      status: 'success',
-      message: 'Album berhasil diperbarui'
-    }
-  }
+    await this._playlistsService.verifyPlaylistOwner(playlistId, credentialId)
+    await this._collaborationsService.deleteCollaboration(playlistId, userId)
 
-  async deleteAlbumByIdHandler (request, h) {
-    const { id } = request.params
-    await this._service.deleteAlbumById(id)
     return {
       status: 'success',
-      message: 'Album berhasil dihapus'
+      message: 'Kolaborasi berhasil dihapus'
     }
   }
 }
 
-module.exports = AlbumsHandler
+module.exports = CollaborationsHandler

@@ -1,6 +1,6 @@
 const InvariantError = require('../../exceptions/InvariantError')
 const {
-  PostPlaylistPayloadSchema, 
+  PostPlaylistPayloadSchema,
   PostPlaylistSongPayloadSchema
 } = require('./schema')
 

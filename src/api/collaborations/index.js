@@ -1,11 +1,13 @@
-const AlbumsHandler = require('./handler')
+const CollaborationsHandler = require('./handler')
 const routes = require('./routes')
 
 module.exports = {
-  name: 'albums',
+  name: 'collaborations',
   version: '1.0.0',
-  register: async (server, { service, validator }) => {
-    const albumsHandler = new AlbumsHandler(service, validator)
-    server.route(routes(albumsHandler))
+  register: async (server, { collaborationsService, playlistsService, usersService, validator }) => {
+    const collaborationsHandler = new CollaborationsHandler(
+      collaborationsService, playlistsService, usersService, validator
+    )
+    server.route(routes(collaborationsHandler))
   }
 }

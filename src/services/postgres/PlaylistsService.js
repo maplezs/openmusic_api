@@ -1,16 +1,17 @@
 const { Pool } = require('pg')
 const { nanoid } = require('nanoid')
 const InvariantError = require('../../exceptions/InvariantError')
-const { mapDBToModel, mapSongDBToModel } = require('../../utils')
+const { mapDBToModel } = require('../../utils')
 const NotFoundError = require('../../exceptions/NotFoundError')
 const AuthorizationError = require('../../exceptions/AuthorizationError')
 
 class PlaylistsService {
-  constructor () {
+  constructor (collaborationsService) {
     this._pool = new Pool()
+    this._collaborationsService = collaborationsService
   }
 
-  async addPlaylist ({name, owner}) {
+  async addPlaylist ({ name, owner }) {
     const id = `playlist-${nanoid(16)}`
     const query = {
       text: 'INSERT INTO playlists VALUES($1, $2, $3) RETURNING id',
@@ -25,7 +26,7 @@ class PlaylistsService {
 
   async getPlaylists (owner) {
     const query = {
-      text: 'SELECT playlists.id, playlists.name, users.username FROM playlists INNER JOIN users ON playlists.owner = users.id WHERE playlists.owner = $1',
+      text: 'SELECT playlists.id, playlists.name, users.username FROM playlists LEFT JOIN users ON playlists.owner = users.id LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id WHERE playlists.owner = $1  OR collaborations.user_id = $1',
       values: [owner]
     }
     const result = await this._pool.query(query)
@@ -43,11 +44,7 @@ class PlaylistsService {
     }
   }
 
-  async addSongToPlaylist ({playlistId, songId}) {
-    const resultSong = await this._pool.query('SELECT * FROM songs WHERE id = $1', [songId])
-    if (!resultSong.rows.length) {
-      throw new NotFoundError('Lagu tidak ditemukan')
-    }
+  async addSongToPlaylist ({ playlistId, songId }) {
     const resultSongPlaylist = await this._pool.query('SELECT * FROM songs_playlists WHERE playlist_id = $1 AND song_id = $2', [playlistId, songId])
     if (resultSongPlaylist.rows.length) {
       throw new InvariantError('Lagu sudah ada pada playlist')
@@ -94,7 +91,7 @@ class PlaylistsService {
     }
   }
 
-  async verifyPlaylistOwner(id, owner) {
+  async verifyPlaylistOwner (id, owner) {
     const query = {
       text: 'SELECT * FROM playlists WHERE id = $1',
       values: [id]
@@ -109,12 +106,16 @@ class PlaylistsService {
     }
   }
 
-  async verifyPlaylistAccess(playlistId, userId) {
+  async verifyPlaylistAccess (playlistId, userId) {
     try {
       await this.verifyPlaylistOwner(playlistId, userId)
-      console.log(playlistId)
     } catch (error) {
       if (error instanceof NotFoundError) {
+        throw error
+      }
+      try {
+        await this._collaborationsService.verifyCollaborator(playlistId, userId)
+      } catch {
         throw error
       }
     }
