@@ -35,6 +35,8 @@ class PlaylistsHandler {
 
   async deletePlaylistHandler (request, h) {
     const { id } = request.params
+    const { id: credentialId } = request.auth.credentials
+    await this._service.verifyPlaylistOwner(id, credentialId)
     await this._service.deletePlaylist(id)
     return {
       status: 'success',
@@ -45,7 +47,10 @@ class PlaylistsHandler {
   async postSongToPlaylistHandler (request, h) {
     this._validator.validatePostPlaylistSongPayloadSchema(request.payload)
     const { id } = request.params
-    await this._service.addSongToPlaylist({id, songId: request.payload})
+    const { songId } = request.payload
+    const { id: credentialId } = request.auth.credentials
+    await this._service.verifyPlaylistOwner(id, credentialId)
+    await this._service.addSongToPlaylist({ playlistId: id, songId })
     const response = h.response({
       status: 'success',
       message: 'Lagu berhasil ditambahkan ke playlist'
@@ -56,7 +61,9 @@ class PlaylistsHandler {
 
   async getSongInPlaylistHandler (request, h) {
     const { id } = request.params
-    await this._service.getSongsInPlaylist(id)
+    const { id: credentialId } = request.auth.credentials
+    await this._service.verifyPlaylistOwner(id, credentialId)
+    const playlist = await this._service.getSongsInPlaylist(id)
     const response = h.response({
       status: 'success',
       data: {
@@ -68,9 +75,11 @@ class PlaylistsHandler {
 
   async deleteSongInPlaylistHandler (request, h) {
     this._validator.validatePostPlaylistSongPayloadSchema(request.payload)
-    const { id: credentialId } = request.auth.credentials;
+    const { id: credentialId } = request.auth.credentials
     const { id } = request.params
-    await this._service.deleteSongInPlaylist(id, request.payload, credentialId)
+    const { songId } = request.payload
+    await this._service.verifyPlaylistOwner(id, credentialId)
+    await this._service.deleteSongInPlaylist(id, songId)
     return {
       status: 'success',
       message: 'Lagu berhasil dihapus'
