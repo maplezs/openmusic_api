@@ -1,7 +1,6 @@
 const { Pool } = require('pg')
 const { nanoid } = require('nanoid')
 const InvariantError = require('../../exceptions/InvariantError')
-const { mapDBToModel } = require('../../utils')
 const NotFoundError = require('../../exceptions/NotFoundError')
 const AuthorizationError = require('../../exceptions/AuthorizationError')
 
@@ -35,11 +34,11 @@ class PlaylistsService {
 
   async deletePlaylist (id) {
     const query = {
-      text: 'DELETE FROM playlists WHERE id = $1 RETURNING id, owner',
+      text: 'DELETE FROM playlists WHERE id = $1 RETURNING id',
       values: [id]
     }
     const result = await this._pool.query(query)
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new NotFoundError('Playlist gagal dihapus. Id tidak ditemukan')
     }
   }
@@ -51,7 +50,7 @@ class PlaylistsService {
       values: [id, playlistId, songId]
     }
     const result = await this._pool.query(query)
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new NotFoundError('Gagal menambahkan lagu. Playlist tidak ditemukan')
     }
   }
@@ -62,7 +61,7 @@ class PlaylistsService {
       values: [id]
     }
     const resultPlaylist = await this._pool.query(queryPlaylist)
-    if (!resultPlaylist.rows.length) {
+    if (!resultPlaylist.rowCount) {
       throw new NotFoundError('Playlist tidak ditemukan')
     }
     const querySongs = {
@@ -71,7 +70,7 @@ class PlaylistsService {
     }
     const resultSongs = await this._pool.query(querySongs)
     return {
-      ...resultPlaylist.rows.map(mapDBToModel)[0],
+      ...resultPlaylist.rows[0],
       songs: resultSongs.rows
     }
   }
@@ -82,7 +81,7 @@ class PlaylistsService {
       values: [id, songId]
     }
     const result = await this._pool.query(query)
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new NotFoundError('Lagu gagal dihapus. Playlist tidak ditemukan')
     }
   }
@@ -113,7 +112,7 @@ class PlaylistsService {
       values: [id]
     }
     const result = await this._pool.query(query)
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new NotFoundError('Playlist tidak ditemukan')
     }
     const playlist = result.rows[0]
