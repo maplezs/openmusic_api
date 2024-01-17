@@ -25,7 +25,10 @@ class PlaylistsService {
 
   async getPlaylists (owner) {
     const query = {
-      text: 'SELECT playlists.id, playlists.name, users.username FROM playlists LEFT JOIN users ON playlists.owner = users.id LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id WHERE playlists.owner = $1  OR collaborations.user_id = $1',
+      text: `SELECT playlists.id, playlists.name, users.username FROM playlists 
+      LEFT JOIN users ON playlists.owner = users.id
+      LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id 
+      WHERE playlists.owner = $1  OR collaborations.user_id = $1`,
       values: [owner]
     }
     const result = await this._pool.query(query)
@@ -56,7 +59,9 @@ class PlaylistsService {
 
   async getSongsInPlaylist (id) {
     const queryPlaylist = {
-      text: 'SELECT playlists.id, playlists.name, users.username FROM playlists INNER JOIN users ON users.id = playlists.owner WHERE playlists.id = $1',
+      text: `SELECT playlists.id, playlists.name, users.username FROM playlists
+      INNER JOIN users ON users.id = playlists.owner 
+      WHERE playlists.id = $1`,
       values: [id]
     }
     const resultPlaylist = await this._pool.query(queryPlaylist)
@@ -64,7 +69,9 @@ class PlaylistsService {
       throw new NotFoundError('Playlist tidak ditemukan')
     }
     const querySongs = {
-      text: 'SELECT songs.id, songs.title, songs.performer FROM songs INNER JOIN songs_playlists ON songs.id = songs_playlists.song_id WHERE songs_playlists.playlist_id = $1',
+      text: `SELECT songs.id, songs.title, songs.performer FROM songs 
+      INNER JOIN songs_playlists ON songs.id = songs_playlists.song_id 
+      WHERE songs_playlists.playlist_id = $1`,
       values: [id]
     }
     const resultSongs = await this._pool.query(querySongs)
@@ -98,7 +105,10 @@ class PlaylistsService {
 
   async getPlaylistActivity (id) {
     const query = {
-      text: 'SELECT users.username, songs.title, playlists_activities.action, playlists_activities.time FROM playlists_activities LEFT JOIN users ON users.id = playlists_activities.user_id LEFT JOIN songs ON songs.id = playlists_activities.song_id WHERE playlists_activities.playlist_id = $1',
+      text: `SELECT users.username, songs.title, playlists_activities.action, playlists_activities.time FROM playlists_activities 
+      LEFT JOIN users ON users.id = playlists_activities.user_id 
+      LEFT JOIN songs ON songs.id = playlists_activities.song_id 
+      WHERE playlists_activities.playlist_id = $1`,
       values: [id]
     }
     const result = await this._pool.query(query)

@@ -1,5 +1,6 @@
 require('dotenv').config()
 const Hapi = require('@hapi/hapi')
+const Jwt = require('@hapi/jwt')
 
 // albums service plugin
 const albums = require('./api/albums')
@@ -32,7 +33,6 @@ const collaborations = require('./api/collaborations')
 const CollaborationsService = require('./services/postgres/CollaborationsService')
 const CollaborationsValidator = require('./validator/collaborations')
 
-const Jwt = require('@hapi/jwt')
 const ClientError = require('./exceptions/ClientError')
 // init server
 const init = async () => {
