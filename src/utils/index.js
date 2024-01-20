@@ -6,4 +6,16 @@ const mapDBToModel = ({
   ...args
 })
 
-module.exports = { mapDBToModel }
+const mapDBAlbumToModel = ({
+  id,
+  name,
+  year,
+  cover
+}) => ({
+  id,
+  name,
+  year,
+  coverUrl: cover
+})
+
+module.exports = { mapDBToModel, mapDBAlbumToModel }

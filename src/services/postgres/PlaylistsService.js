@@ -5,9 +5,10 @@ const NotFoundError = require('../../exceptions/NotFoundError')
 const AuthorizationError = require('../../exceptions/AuthorizationError')
 
 class PlaylistsService {
-  constructor (collaborationsService) {
+  constructor (collaborationsService, cacheService) {
     this._pool = new Pool()
     this._collaborationsService = collaborationsService
+    this._cacheService = cacheService
   }
 
   async addPlaylist ({ name, owner }) {
@@ -20,30 +21,45 @@ class PlaylistsService {
     if (!result.rowCount) {
       throw new InvariantError('Playlist gagal ditambahkan')
     }
+    await this._cacheService.delete(`playlists:${owner}`)
     return result.rows[0].id
   }
 
   async getPlaylists (owner) {
-    const query = {
-      text: `SELECT playlists.id, playlists.name, users.username FROM playlists 
-      LEFT JOIN users ON playlists.owner = users.id
-      LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id 
-      WHERE playlists.owner = $1  OR collaborations.user_id = $1`,
-      values: [owner]
+    try {
+      const result = await this._cacheService.get(`playlists:${owner}`)
+      return {
+        playlists: JSON.parse(result),
+        header: 'cache'
+      }
+    } catch (error) {
+      const query = {
+        text: `SELECT playlists.id, playlists.name, users.username FROM playlists 
+        LEFT JOIN users ON playlists.owner = users.id
+        LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id 
+        WHERE playlists.owner = $1  OR collaborations.user_id = $1`,
+        values: [owner]
+      }
+      const result = await this._pool.query(query)
+      await this._cacheService.set(`playlists:${owner}`, JSON.stringify(result.rows))
+      return {
+        playlists: result.rows,
+        header: 'db'
+      }
     }
-    const result = await this._pool.query(query)
-    return result.rows
   }
 
   async deletePlaylist (id) {
     const query = {
-      text: 'DELETE FROM playlists WHERE id = $1 RETURNING id',
+      text: 'DELETE FROM playlists WHERE id = $1 RETURNING id, owner',
       values: [id]
     }
     const result = await this._pool.query(query)
     if (!result.rowCount) {
       throw new NotFoundError('Playlist gagal dihapus. Id tidak ditemukan')
     }
+    const { owner } = result.rows[0]
+    await this._cacheService.delete(`playlists:${owner}`)
   }
 
   async addSongToPlaylist ({ playlistId, songId }) {
@@ -55,29 +71,45 @@ class PlaylistsService {
     if (!result.rowCount) {
       throw new NotFoundError('Gagal menambahkan lagu. Playlist tidak ditemukan')
     }
+    await this._cacheService.delete(`songsPlaylists:${playlistId}`)
   }
 
   async getSongsInPlaylist (id) {
-    const queryPlaylist = {
-      text: `SELECT playlists.id, playlists.name, users.username FROM playlists
-      INNER JOIN users ON users.id = playlists.owner 
-      WHERE playlists.id = $1`,
-      values: [id]
-    }
-    const resultPlaylist = await this._pool.query(queryPlaylist)
-    if (!resultPlaylist.rowCount) {
-      throw new NotFoundError('Playlist tidak ditemukan')
-    }
-    const querySongs = {
-      text: `SELECT songs.id, songs.title, songs.performer FROM songs 
-      INNER JOIN songs_playlists ON songs.id = songs_playlists.song_id 
-      WHERE songs_playlists.playlist_id = $1`,
-      values: [id]
-    }
-    const resultSongs = await this._pool.query(querySongs)
-    return {
-      ...resultPlaylist.rows[0],
-      songs: resultSongs.rows
+    try {
+      const result = await this._cacheService.get(`songsPlaylists:${id}`)
+      return {
+        playlist: JSON.parse(result),
+        header: 'cache'
+      }
+    } catch (error) {
+      const queryPlaylist = {
+        text: `SELECT playlists.id, playlists.name, users.username FROM playlists
+        INNER JOIN users ON users.id = playlists.owner 
+        WHERE playlists.id = $1`,
+        values: [id]
+      }
+      const resultPlaylist = await this._pool.query(queryPlaylist)
+      if (!resultPlaylist.rowCount) {
+        throw new NotFoundError('Playlist tidak ditemukan')
+      }
+      const querySongs = {
+        text: `SELECT songs.id, songs.title, songs.performer FROM songs 
+        INNER JOIN songs_playlists ON songs.id = songs_playlists.song_id 
+        WHERE songs_playlists.playlist_id = $1`,
+        values: [id]
+      }
+      const resultSongs = await this._pool.query(querySongs)
+      await this._cacheService.set(`songsPlaylists:${id}`, JSON.stringify({
+        ...resultPlaylist.rows[0],
+        songs: resultSongs.rows
+      }))
+      return {
+        playlist: {
+          ...resultPlaylist.rows[0],
+          songs: resultSongs.rows
+        },
+        header: 'db'
+      }
     }
   }
 
@@ -90,6 +122,7 @@ class PlaylistsService {
     if (!result.rowCount) {
       throw new NotFoundError('Lagu gagal dihapus. Playlist tidak ditemukan')
     }
+    await this._cacheService.delete(`songsPlaylists:${id}`)
   }
 
   async addPlaylistActivity (id, userId, songId, action) {
@@ -101,18 +134,31 @@ class PlaylistsService {
     if (!result.rowCount) {
       throw new InvariantError('Aktivitas playlist gagal ditambahkan')
     }
+    await this._cacheService.delete(`playlistActivity:${id}`)
   }
 
   async getPlaylistActivity (id) {
-    const query = {
-      text: `SELECT users.username, songs.title, playlists_activities.action, playlists_activities.time FROM playlists_activities 
-      LEFT JOIN users ON users.id = playlists_activities.user_id 
-      LEFT JOIN songs ON songs.id = playlists_activities.song_id 
-      WHERE playlists_activities.playlist_id = $1`,
-      values: [id]
+    try {
+      const result = await this._cacheService.get(`playlistActivity:${id}`)
+      return {
+        activities: JSON.parse(result),
+        header: 'cache'
+      }
+    } catch (error) {
+      const query = {
+        text: `SELECT users.username, songs.title, playlists_activities.action, playlists_activities.time FROM playlists_activities 
+        LEFT JOIN users ON users.id = playlists_activities.user_id 
+        LEFT JOIN songs ON songs.id = playlists_activities.song_id 
+        WHERE playlists_activities.playlist_id = $1`,
+        values: [id]
+      }
+      const result = await this._pool.query(query)
+      await this._cacheService.set(`playlistActivity:${id}`, JSON.stringify(result.rows))
+      return {
+        activities: result.rows,
+        header: 'db'
+      }
     }
-    const result = await this._pool.query(query)
-    return result.rows
   }
 
   async verifyPlaylistOwner (id, owner) {

@@ -25,13 +25,15 @@ class PlaylistsHandler {
 
   async getPlaylistsHandler (request, h) {
     const { id: credentialId } = request.auth.credentials
-    const playlists = await this._playlistsService.getPlaylists(credentialId)
-    return {
+    const { playlists, header } = await this._playlistsService.getPlaylists(credentialId)
+    const response = h.response({
       status: 'success',
       data: {
         playlists
       }
-    }
+    })
+    response.header('X-Data-Source', header)
+    return response
   }
 
   async deletePlaylistHandler (request, h) {
@@ -70,13 +72,14 @@ class PlaylistsHandler {
     const { id } = request.params
     const { id: credentialId } = request.auth.credentials
     await this._playlistsService.verifyPlaylistAccess(id, credentialId)
-    const playlist = await this._playlistsService.getSongsInPlaylist(id)
+    const { playlist, header } = await this._playlistsService.getSongsInPlaylist(id)
     const response = h.response({
       status: 'success',
       data: {
         playlist
       }
     })
+    response.header('X-Data-Source', header)
     return response
   }
 
@@ -98,14 +101,16 @@ class PlaylistsHandler {
     const { id: credentialId } = request.auth.credentials
     const { id } = request.params
     await this._playlistsService.verifyPlaylistAccess(id, credentialId)
-    const activities = await this._playlistsService.getPlaylistActivity(id)
-    return {
+    const { activities, header } = await this._playlistsService.getPlaylistActivity(id)
+    const response = h.response({
       status: 'success',
       data: {
         playlistId: id,
         activities
       }
-    }
+    })
+    response.header('X-Data-Source', header)
+    return response
   }
 }
 
